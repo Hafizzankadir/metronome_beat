@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metronome</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; height:100%;
+    background:#000000;
+    color:#ffffff;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  body{
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; padding:24px;
+  }
+  .card{
+    width:100%; max-width:340px;
+    text-align:center;
+  }
+
+  .dot{
+    width:22px; height:22px;
+    border-radius:50%;
+    background:#1a1a1a;
+    border:1px solid #333333;
+    margin:0 auto 34px;
+    transition: transform 0.06s ease, background 0.06s ease;
+  }
+  .dot.lit{
+    background:#e60000;
+    border-color:#e60000;
+    box-shadow: 0 0 14px 2px rgba(230,0,0,0.6);
+    transform:scale(1.5);
+  }
+  .dot.lit.accent{
+    background:#ffffff;
+    border-color:#ffffff;
+    box-shadow: 0 0 20px 4px rgba(255,255,255,0.8);
+    transform:scale(1.85);
+  }
+
+  .bpm{
+    font-size:64px;
+    font-weight:600;
+    letter-spacing:-0.02em;
+    line-height:1;
+    font-variant-numeric: tabular-nums;
+    color:#ffffff;
+  }
+  .bpm-label{
+    font-size:11px;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:#8a8a8a;
+    margin-top:8px;
+  }
+
+  input[type=range]{
+    -webkit-appearance:none;
+    width:100%;
+    height:2px;
+    background:#333333;
+    outline:none;
+    margin:28px 0 22px;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:16px; height:16px;
+    border-radius:50%;
+    background:#e60000;
+    cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:16px; height:16px; border:none;
+    border-radius:50%;
+    background:#e60000;
+    cursor:pointer;
+  }
+
+  .steps{
+    display:flex; justify-content:center; gap:10px;
+    margin-bottom:30px;
+  }
+  .steps button{
+    width:36px; height:36px;
+    border-radius:8px;
+    border:1px solid #333333;
+    background:#0d0d0d;
+    color:#ffffff;
+    font-family:inherit;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .steps button:active{ background:#e60000; border-color:#e60000; }
+
+  .timesig-row{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:8px;
+    margin-bottom:20px;
+  }
+  .timesig-row select{
+    background:#0d0d0d;
+    border:1px solid #333333;
+    color:#ffffff;
+    font-family:inherit;
+    font-size:15px;
+    padding:8px 10px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .timesig-row .slash{
+    color:#e60000;
+    font-size:16px;
+  }
+  .timesig-row .beat-indicator{
+    display:flex;
+    gap:5px;
+    margin-left:6px;
+  }
+  .timesig-row .beat-indicator .b{
+    width:6px; height:6px;
+    border-radius:50%;
+    background:#333333;
+  }
+  .timesig-row .beat-indicator .b.accent{
+    background:#5a1a1a;
+  }
+  .timesig-row .beat-indicator .b.current{
+    background:#ffffff;
+  }
+  .timesig-row .beat-indicator .b.current.accent{
+    background:#e60000;
+  }
+
+  .mode-toggle{
+    display:flex;
+    justify-content:center;
+    gap:6px;
+    margin-bottom:14px;
+  }
+  .mode-toggle button{
+    flex:1;
+    max-width:120px;
+    border:1px solid #333333;
+    background:#0d0d0d;
+    color:#8a8a8a;
+    font-family:inherit;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    padding:8px 6px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .mode-toggle button.active{
+    background:#e60000;
+    color:#ffffff;
+    border-color:#e60000;
+  }
+
+  .duration-row{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .duration-row.hidden{ display:none; }
+  .duration-row input{
+    width:52px;
+    text-align:center;
+    background:#0d0d0d;
+    border:1px solid #333333;
+    color:#ffffff;
+    font-family:inherit;
+    font-size:14px;
+    padding:7px 4px;
+    border-radius:8px;
+  }
+  .duration-row span{
+    font-size:11px;
+    color:#8a8a8a;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+  }
+
+  .timer{
+    font-size:15px;
+    color:#8a8a8a;
+    letter-spacing:0.04em;
+    margin-bottom:6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .timer.done{ color:#e60000; }
+
+  .pause-info{
+    font-size:11px;
+    color:#e60000;
+    letter-spacing:0.04em;
+    margin-bottom:16px;
+    display:none;
+    font-variant-numeric: tabular-nums;
+  }
+  .pause-info.show{ display:block; }
+
+  .countdown-controls{
+    display:none;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .countdown-controls.show{ display:flex; }
+  .countdown-controls button{
+    flex:1;
+    border:1px solid #333333;
+    border-radius:10px;
+    padding:12px 10px;
+    font-family:inherit;
+    font-size:12px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    cursor:pointer;
+    background:#0d0d0d;
+    color:#ffffff;
+  }
+  .countdown-controls button:active{ background:#1a1a1a; }
+  .countdown-controls #pauseBtn.paused{
+    background:#e60000;
+    border-color:#e60000;
+  }
+  .countdown-controls #endBtn{
+    color:#e60000;
+    border-color:#e60000;
+  }
+  .countdown-controls #endBtn:active{ background:#e60000; color:#ffffff; }
+
+  .report{
+    display:none;
+    text-align:left;
+    margin-top:16px;
+    border:1px solid #333333;
+    border-radius:10px;
+    padding:14px;
+    background:#0d0d0d;
+  }
+  .report.show{ display:block; }
+  .report pre{
+    margin:0 0 12px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:#ffffff;
+    white-space:pre-wrap;
+    line-height:1.6;
+  }
+  .report button{
+    width:100%;
+    border:1px solid #333333;
+    border-radius:8px;
+    padding:10px;
+    font-family:inherit;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    cursor:pointer;
+    background:transparent;
+    color:#ffffff;
+  }
+  .report button.copied{
+    background:#e60000;
+    border-color:#e60000;
+  }
+  .report button:active{ opacity:0.85; }
+
+  .play{
+    width:100%;
+    border:none;
+    border-radius:10px;
+    padding:15px 10px;
+    font-family:inherit;
+    font-size:13px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    background:#e60000;
+    color:#ffffff;
+  }
+  .play.playing{
+    background:#0d0d0d;
+    color:#ffffff;
+    border:1px solid #333333;
+  }
+  .play:active{ opacity:0.85; }
+
+  .export{
+    width:100%;
+    border:1px solid #333333;
+    border-radius:10px;
+    padding:14px 10px;
+    font-family:inherit;
+    font-size:13px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    background:transparent;
+    color:#ffffff;
+    margin-top:10px;
+  }
+  .export:disabled{
+    color:#4a4a4a;
+    border-color:#1f1f1f;
+    cursor:not-allowed;
+  }
+  .export:not(:disabled):active{ background:#e60000; border-color:#e60000; }
+
+  .export-hint{
+    font-size:10px;
+    color:#4a4a4a;
+    letter-spacing:0.04em;
+    margin-top:10px;
+  }
+
+  .error-banner{
+    display:none;
+    font-size:11px;
+    color:#ffffff;
+    background:rgba(230,0,0,0.15);
+    border:1px solid #e60000;
+    border-radius:8px;
+    padding:10px 12px;
+    margin-top:14px;
+    text-align:left;
+    line-height:1.4;
+  }
+  .error-banner.show{ display:block; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="dot" id="dot"></div>
+
+  <div class="bpm" id="bpmNum">0</div>
+  <div class="bpm-label">bpm</div>
+
+  <input type="range" id="slider" min="0" max="240" value="0" step="1">
+
+  <div class="steps">
+    <button id="m10">−10</button>
+    <button id="m5">−5</button>
+    <button id="p5">+5</button>
+    <button id="p10">+10</button>
+  </div>
+
+  <div class="timesig-row">
+    <select id="beatsSelect"></select>
+    <span class="slash">/</span>
+    <select id="noteSelect">
+      <option value="2">2</option>
+      <option value="4" selected>4</option>
+      <option value="8">8</option>
+      <option value="16">16</option>
+    </select>
+    <div class="beat-indicator" id="beatIndicator"></div>
+  </div>
+
+  <div class="mode-toggle">
+    <button id="modeStopwatch" class="active">Stopwatch</button>
+    <button id="modeCountdown">Countdown</button>
+  </div>
+
+  <div class="duration-row hidden" id="durationRow">
+    <input type="number" id="durMin" min="0" value="5"><span>min</span>
+    <input type="number" id="durSec" min="0" max="59" value="0"><span>sec</span>
+  </div>
+
+  <div class="timer" id="timer">00:00</div>
+  <div class="pause-info" id="pauseInfo">Paused: 00:00</div>
+
+  <div class="countdown-controls" id="countdownControls">
+    <button id="pauseBtn">Pause</button>
+    <button id="endBtn">End</button>
+  </div>
+
+  <button class="play" id="playBtn">Start</button>
+  <button class="export" id="exportBtn">Export audio</button>
+  <div class="export-hint" id="exportHint">Switch to countdown to export a click track</div>
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div class="report" id="reportBox">
+    <pre id="reportText"></pre>
+    <button id="copyBtn">Copy report</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const slider = document.getElementById('slider');
+  const bpmNum = document.getElementById('bpmNum');
+  const dot = document.getElementById('dot');
+  const playBtn = document.getElementById('playBtn');
+  const timerEl = document.getElementById('timer');
+  const m10 = document.getElementById('m10'), m5 = document.getElementById('m5'),
+        p5 = document.getElementById('p5'), p10 = document.getElementById('p10');
+  const errorBanner = document.getElementById('errorBanner');
+  const countdownControls = document.getElementById('countdownControls');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const endBtn = document.getElementById('endBtn');
+  const pauseInfo = document.getElementById('pauseInfo');
+  const reportBox = document.getElementById('reportBox');
+  const reportText = document.getElementById('reportText');
+  const copyBtn = document.getElementById('copyBtn');
+  const beatsSelect = document.getElementById('beatsSelect');
+  const noteSelect = document.getElementById('noteSelect');
+  const beatIndicator = document.getElementById('beatIndicator');
+
+  for(let i=1;i<=12;i++){
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = i;
+    if(i === 4) opt.selected = true;
+    beatsSelect.appendChild(opt);
+  }
+
+  function showError(msg){
+    errorBanner.textContent = msg;
+    errorBanner.classList.add('show');
+  }
+  function clearError(){
+    errorBanner.classList.remove('show');
+    errorBanner.textContent = '';
+  }
+  window.addEventListener('error', (e) => {
+    showError('Something went wrong: ' + (e.message || 'unknown error') + '. Try reloading the page.');
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    showError('Something went wrong: ' + (e.reason && e.reason.message ? e.reason.message : e.reason) + '. Try reloading the page.');
+  });
+
+  let bpm = 0;
+  let isPlaying = false;
+
+  let audioCtx = null;
+  let nextNoteTime = 0;
+  const lookahead = 25.0;
+  const scheduleAheadTime = 0.1;
+  let timerID = null;
+  let scheduledTimes = [];
+
+  let sessionStart = null;
+  let elapsedID = null;
+  let mode = 'stopwatch'; // or 'countdown'
+  let countdownTotal = 0; // seconds
+
+  let beatsPerBar = 4;
+  let schedulerBeatIndex = 0; // which beat within the bar comes next
+
+  function buildBeatIndicator(){
+    beatIndicator.innerHTML = '';
+    for(let i=0;i<beatsPerBar;i++){
+      const b = document.createElement('div');
+      b.className = 'b' + (i === 0 ? ' accent' : '');
+      beatIndicator.appendChild(b);
+    }
+  }
+  buildBeatIndicator();
+
+  function lightBeatIndicator(index){
+    const els = beatIndicator.children;
+    for(let i=0;i<els.length;i++) els[i].classList.remove('current');
+    if(els[index]) els[index].classList.add('current');
+  }
+
+  beatsSelect.addEventListener('change', () => {
+    beatsPerBar = parseInt(beatsSelect.value, 10);
+    schedulerBeatIndex = 0;
+    buildBeatIndicator();
+    refreshExportState();
+  });
+  noteSelect.addEventListener('change', refreshExportState);
+  // noteSelect (the denominator) is notational only and doesn't change click timing
+
+  let isPaused = false;
+  let activeStart = null;       // Date.now() at last resume/start
+  let accumulatedActiveMs = 0;  // active (non-paused) ms accumulated across pauses
+  let pauseStartTime = null;    // Date.now() when current pause began
+  let totalPausedMs = 0;        // total ms spent paused this session
+
+  function getActiveElapsedMs(){
+    if(!sessionStart) return 0;
+    return accumulatedActiveMs + (isPaused ? 0 : (Date.now() - activeStart));
+  }
+
+  const modeStopwatchBtn = document.getElementById('modeStopwatch');
+  const modeCountdownBtn = document.getElementById('modeCountdown');
+  const durationRow = document.getElementById('durationRow');
+  const durMin = document.getElementById('durMin');
+  const durSec = document.getElementById('durSec');
+
+  function setMode(next){
+    if(isPlaying) stop();
+    mode = next;
+    modeStopwatchBtn.classList.toggle('active', mode === 'stopwatch');
+    modeCountdownBtn.classList.toggle('active', mode === 'countdown');
+    durationRow.classList.toggle('hidden', mode !== 'countdown');
+    timerEl.classList.remove('done');
+    timerEl.textContent = mode === 'countdown' ? formatTime(getDurationInput()) : '00:00';
+    refreshExportState();
+  }
+  modeStopwatchBtn.addEventListener('click', () => setMode('stopwatch'));
+  modeCountdownBtn.addEventListener('click', () => setMode('countdown'));
+
+  function getDurationInput(){
+    const m = Math.max(0, parseInt(durMin.value, 10) || 0);
+    const s = Math.max(0, Math.min(59, parseInt(durSec.value, 10) || 0));
+    return m*60 + s;
+  }
+  durMin.addEventListener('input', () => { if(!isPlaying && mode==='countdown') timerEl.textContent = formatTime(getDurationInput()); });
+  durSec.addEventListener('input', () => { if(!isPlaying && mode==='countdown') timerEl.textContent = formatTime(getDurationInput()); });
+
+  function updateBpmDisplay(){
+    bpmNum.textContent = bpm;
+    slider.value = bpm;
+  }
+
+  function formatTime(sec){
+    sec = Math.max(0, Math.round(sec));
+    const m = Math.floor(sec/60).toString().padStart(2,'0');
+    const s = Math.floor(sec%60).toString().padStart(2,'0');
+    return m+':'+s;
+  }
+
+  function tickElapsed(){
+    if(!sessionStart) return;
+    const activeElapsedSec = getActiveElapsedMs()/1000;
+
+    if(isPaused){
+      const livePauseSec = (totalPausedMs + (Date.now() - pauseStartTime))/1000;
+      pauseInfo.textContent = 'Paused: ' + formatTime(livePauseSec);
+      pauseInfo.classList.add('show');
+    } else if(totalPausedMs > 0){
+      pauseInfo.textContent = 'Paused: ' + formatTime(totalPausedMs/1000);
+      pauseInfo.classList.add('show');
+    } else {
+      pauseInfo.classList.remove('show');
+    }
+
+    if(mode === 'countdown'){
+      const remaining = countdownTotal - activeElapsedSec;
+      if(remaining <= 0){
+        timerEl.textContent = '00:00';
+        timerEl.classList.add('done');
+        endSession();
+        return;
+      }
+      timerEl.textContent = formatTime(remaining);
+    } else {
+      timerEl.textContent = formatTime(activeElapsedSec);
+    }
+  }
+
+  function scheduleClick(time, isAccent){
+    try{
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = isAccent ? 1400 : 900;
+      gain.gain.setValueAtTime(isAccent ? 0.7 : 0.45, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(time);
+      osc.stop(time + 0.06);
+      scheduledTimes.push({ time, accent: isAccent });
+    } catch(err){
+      showError('Audio playback error: ' + err.message);
+      stop();
+    }
+  }
+
+  function scheduler(){
+    if(bpm <= 0){
+      timerID = setTimeout(scheduler, lookahead);
+      return;
+    }
+    const secondsPerBeat = 60.0 / bpm;
+    while(nextNoteTime < audioCtx.currentTime + scheduleAheadTime){
+      scheduleClick(nextNoteTime, schedulerBeatIndex === 0);
+      schedulerBeatIndex = (schedulerBeatIndex + 1) % beatsPerBar;
+      nextNoteTime += secondsPerBeat;
+    }
+    timerID = setTimeout(scheduler, lookahead);
+  }
+
+  let visualBeatIndex = 0;
+  let rafID = null;
+  function visualLoop(){
+    if(!isPlaying) return;
+    const now = audioCtx.currentTime;
+    while(scheduledTimes.length && scheduledTimes[0].time < now - 0.3){
+      scheduledTimes.shift();
+    }
+    if(scheduledTimes.length && scheduledTimes[0].time <= now){
+      const note = scheduledTimes.shift();
+      if(note.accent) visualBeatIndex = 0;
+      dot.classList.add('lit');
+      if(note.accent) dot.classList.add('accent');
+      lightBeatIndicator(visualBeatIndex);
+      const wasAccent = note.accent;
+      setTimeout(() => {
+        dot.classList.remove('lit');
+        if(wasAccent) dot.classList.remove('accent');
+      }, 90);
+      visualBeatIndex = (visualBeatIndex + 1) % beatsPerBar;
+    }
+    rafID = requestAnimationFrame(visualLoop);
+  }
+
+  function start(){
+    if(isPlaying) return;
+    clearError();
+    try{
+      if(!audioCtx){
+        const Ctor = window.AudioContext || window.webkitAudioContext;
+        if(!Ctor){ showError('This browser does not support Web Audio, so the click sound cannot play.'); return; }
+        audioCtx = new Ctor();
+      }
+      if(audioCtx.state === 'suspended') audioCtx.resume();
+    } catch(err){
+      showError('Could not start audio: ' + err.message);
+      return;
+    }
+    isPlaying = true;
+    scheduledTimes = [];
+    schedulerBeatIndex = 0;
+    visualBeatIndex = 0;
+    nextNoteTime = audioCtx.currentTime + 0.05;
+    scheduler();
+    requestAnimationFrame(visualLoop);
+
+    sessionStart = Date.now();
+    activeStart = Date.now();
+    accumulatedActiveMs = 0;
+    isPaused = false;
+    pauseStartTime = null;
+    totalPausedMs = 0;
+    pauseInfo.classList.remove('show');
+    reportBox.classList.remove('show');
+    pauseBtn.textContent = 'Pause';
+    pauseBtn.classList.remove('paused');
+
+    timerEl.classList.remove('done');
+    if(mode === 'countdown'){
+      countdownTotal = getDurationInput();
+      timerEl.textContent = formatTime(countdownTotal);
+      countdownControls.classList.add('show');
+    } else {
+      timerEl.textContent = '00:00';
+      countdownControls.classList.remove('show');
+    }
+    elapsedID = setInterval(tickElapsed, 250);
+
+    playBtn.textContent = 'Stop';
+    playBtn.classList.add('playing');
+  }
+
+  function stop(){
+    isPlaying = false;
+    isPaused = false;
+    pauseStartTime = null;
+    clearTimeout(timerID);
+    cancelAnimationFrame(rafID);
+    clearInterval(elapsedID);
+    dot.classList.remove('lit');
+    dot.classList.remove('accent');
+    lightBeatIndicator(-1);
+    playBtn.textContent = 'Start';
+    playBtn.classList.remove('playing');
+    countdownControls.classList.remove('show');
+    pauseInfo.classList.remove('show');
+    pauseBtn.textContent = 'Pause';
+    pauseBtn.classList.remove('paused');
+  }
+
+  function pause(){
+    if(!isPlaying || isPaused || mode !== 'countdown') return;
+    isPaused = true;
+    accumulatedActiveMs += Date.now() - activeStart;
+    pauseStartTime = Date.now();
+    clearTimeout(timerID);
+    cancelAnimationFrame(rafID);
+    dot.classList.remove('lit');
+    dot.classList.remove('accent');
+    pauseBtn.textContent = 'Resume';
+    pauseBtn.classList.add('paused');
+  }
+
+  function resumeCountdown(){
+    if(!isPlaying || !isPaused) return;
+    totalPausedMs += Date.now() - pauseStartTime;
+    pauseStartTime = null;
+    isPaused = false;
+    activeStart = Date.now();
+    scheduledTimes = [];
+    schedulerBeatIndex = 0;
+    visualBeatIndex = 0;
+    if(audioCtx) nextNoteTime = audioCtx.currentTime + 0.05;
+    scheduler();
+    requestAnimationFrame(visualLoop);
+    pauseBtn.textContent = 'Pause';
+    pauseBtn.classList.remove('paused');
+  }
+
+  pauseBtn.addEventListener('click', () => { isPaused ? resumeCountdown() : pause(); });
+
+  function showReport(activeMs, pausedMs){
+    const text = 'BPM: ' + bpm + '\nDuration: ' + formatTime(activeMs/1000) + '\nPause Time: ' + formatTime(pausedMs/1000);
+    reportText.textContent = text;
+    reportBox.classList.add('show');
+  }
+
+  function endSession(){
+    if(!isPlaying) return;
+    const finalActiveMs = getActiveElapsedMs();
+    const finalPausedMs = totalPausedMs + (isPaused && pauseStartTime ? (Date.now() - pauseStartTime) : 0);
+    stop();
+    showReport(finalActiveMs, finalPausedMs);
+  }
+
+  endBtn.addEventListener('click', endSession);
+
+  copyBtn.addEventListener('click', async () => {
+    const text = reportText.textContent;
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      copyBtn.textContent = 'Copied';
+      copyBtn.classList.add('copied');
+      setTimeout(() => { copyBtn.textContent = 'Copy report'; copyBtn.classList.remove('copied'); }, 1500);
+    } catch(err){
+      showError('Could not copy to clipboard: ' + err.message);
+    }
+  });
+
+  playBtn.addEventListener('click', () => { isPlaying ? stop() : start(); });
+
+  slider.addEventListener('input', (e) => {
+    bpm = parseInt(e.target.value, 10);
+    updateBpmDisplay();
+  });
+
+  function nudge(delta){
+    bpm = Math.max(0, Math.min(240, bpm + delta));
+    updateBpmDisplay();
+    refreshExportState();
+  }
+  m10.addEventListener('click', () => nudge(-10));
+  m5.addEventListener('click', () => nudge(-5));
+  p5.addEventListener('click', () => nudge(5));
+  p10.addEventListener('click', () => nudge(10));
+
+  slider.addEventListener('input', refreshExportState);
+  durMin.addEventListener('input', refreshExportState);
+  durSec.addEventListener('input', refreshExportState);
+
+  // ---- Export to WAV ----
+  const exportBtn = document.getElementById('exportBtn');
+  const exportHint = document.getElementById('exportHint');
+
+  function refreshExportState(){
+    const dur = getDurationInput();
+    const ok = mode === 'countdown' && bpm > 0 && dur > 0;
+    exportBtn.disabled = !ok;
+    if(mode !== 'countdown'){
+      exportHint.textContent = 'Switch to countdown to export a click track';
+    } else if(bpm <= 0){
+      exportHint.textContent = 'Set a bpm above 0 to export';
+    } else if(dur <= 0){
+      exportHint.textContent = 'Set a countdown length to export';
+    } else {
+      exportHint.textContent = formatTime(dur) + ' at ' + bpm + ' bpm, ' + beatsPerBar + '/' + noteSelect.value;
+    }
+  }
+
+  function audioBufferToWav(buffer){
+    const numChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const numFrames = buffer.length;
+    const bytesPerSample = 2;
+    const blockAlign = numChannels * bytesPerSample;
+    const dataSize = numFrames * blockAlign;
+    const bufferSize = 44 + dataSize;
+    const ab = new ArrayBuffer(bufferSize);
+    const view = new DataView(ab);
+
+    function writeString(offset, str){
+      for(let i=0;i<str.length;i++) view.setUint8(offset+i, str.charCodeAt(i));
+    }
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // PCM
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * blockAlign, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bytesPerSample * 8, true);
+    writeString(36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    const channels = [];
+    for(let c=0;c<numChannels;c++) channels.push(buffer.getChannelData(c));
+
+    let offset = 44;
+    for(let i=0;i<numFrames;i++){
+      for(let c=0;c<numChannels;c++){
+        let sample = Math.max(-1, Math.min(1, channels[c][i]));
+        sample = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+        view.setInt16(offset, sample, true);
+        offset += 2;
+      }
+    }
+    return new Blob([ab], { type: 'audio/wav' });
+  }
+
+  async function exportAudio(){
+    const dur = getDurationInput();
+    if(mode !== 'countdown' || bpm <= 0 || dur <= 0) return;
+
+    clearError();
+
+    const Ctor = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if(!Ctor){
+      showError('This browser does not support offline audio rendering, so export is unavailable.');
+      return;
+    }
+
+    exportBtn.disabled = true;
+    const prevLabel = exportBtn.textContent;
+    exportBtn.textContent = 'Rendering…';
+
+    try{
+      const sampleRate = 44100;
+      const offlineCtx = new Ctor(1, Math.ceil(sampleRate * dur), sampleRate);
+      const secondsPerBeat = 60.0 / bpm;
+      let beatIndex = 0;
+
+      for(let t = 0; t < dur; t += secondsPerBeat){
+        const isAccent = beatIndex === 0;
+        const osc = offlineCtx.createOscillator();
+        const gain = offlineCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = isAccent ? 1400 : 900;
+        gain.gain.setValueAtTime(isAccent ? 0.7 : 0.45, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        osc.connect(gain);
+        gain.connect(offlineCtx.destination);
+        osc.start(t);
+        osc.stop(Math.min(dur, t + 0.06));
+        beatIndex = (beatIndex + 1) % beatsPerBar;
+      }
+
+      const rendered = await offlineCtx.startRendering();
+      const blob = audioBufferToWav(rendered);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'metronome-' + bpm + 'bpm-' + beatsPerBar + 'x' + noteSelect.value + '-' + Math.round(dur) + 's.wav';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch(err){
+      showError('Export failed: ' + err.message);
+    } finally {
+      exportBtn.textContent = prevLabel;
+      refreshExportState();
+    }
+  }
+
+  exportBtn.addEventListener('click', exportAudio);
+
+  updateBpmDisplay();
+  refreshExportState();
+})();
+</script>
+
+</body>
+</html>
